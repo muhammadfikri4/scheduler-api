@@ -4,13 +4,42 @@ on:
   push:
     branches: [main]
 
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
-
+    env:
+      SERVICE_NAME: "SCHEDULER API"
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Get Commits
+        id: commits
+        run: |
+          COMMITS=$(echo '${{ toJson(github.event.commits) }}' | jq -r '.[] | "• `\(.id[0:7])` \(.message)"' | head -10)
+          echo "list<<EOF" >> $GITHUB_OUTPUT
+          echo "$COMMITS" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Notify Discord - Start
+        uses: tsickert/discord-webhook@v5.3.0
+        with:
+          webhook-url: ${{ secrets.DISCORD_WEBHOOK }}
+          embed-title: "${{ env.SERVICE_NAME }}"
+          embed-description: |
+            **Pipeline Start**
+
+            **Branch:** `${{ github.ref_name }}`
+            **Changes:**
+            ${{ steps.commits.outputs.list }}
+
+            **Author:** ${{ github.event.head_commit.author.name }}
+          embed-color: 16776960
+          embed-url: ${{ github.event.head_commit.url }}
 
       - name: Deploy via SSH
         env:
@@ -59,3 +88,37 @@ jobs:
             pm2 delete scheduler-api 2>/dev/null || true
             pm2 start dist/main.js --name scheduler-api
             pm2 save
+
+      - name: Notify Discord - Success
+        if: success()
+        uses: tsickert/discord-webhook@v5.3.0
+        with:
+          webhook-url: ${{ secrets.DISCORD_WEBHOOK }}
+          embed-title: "${{ env.SERVICE_NAME }}"
+          embed-description: |
+            **Pipeline Success**
+
+            **Branch:** `${{ github.ref_name }}`
+            **Changes:**
+            ${{ steps.commits.outputs.list }}
+
+            **Author:** ${{ github.event.head_commit.author.name }}
+          embed-color: 3066993
+          embed-url: ${{ github.event.head_commit.url }}
+
+      - name: Notify Discord - Failure
+        if: failure()
+        uses: tsickert/discord-webhook@v5.3.0
+        with:
+          webhook-url: ${{ secrets.DISCORD_WEBHOOK }}
+          embed-title: "${{ env.SERVICE_NAME }}"
+          embed-description: |
+            **Pipeline Failed**
+
+            **Branch:** `${{ github.ref_name }}`
+            **Changes:**
+            ${{ steps.commits.outputs.list }}
+
+            **Author:** ${{ github.event.head_commit.author.name }}
+          embed-color: 15158332
+          embed-url: ${{ github.event.head_commit.url }}
