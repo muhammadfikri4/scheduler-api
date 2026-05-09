@@ -26,16 +26,17 @@ jobs:
             export NVM_DIR="$HOME/.nvm"
             [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
 
-            APP_DIR="/var/www/nestjs-scheduler-email"
+            APP_DIR="$HOME/app/scheduler-api"
 
-            # Clone or pull latest
-            if [ ! -d "$APP_DIR" ]; then
-              git clone git@github.com:${{ github.repository }}.git $APP_DIR
+            if [ -d "$APP_DIR/.git" ]; then
+              cd $APP_DIR
+              git fetch origin main
+              git reset --hard origin/main
+            else
+              mkdir -p $HOME/app
+              git clone https://github.com/${{ github.repository }}.git $APP_DIR
+              cd $APP_DIR
             fi
-
-            cd $APP_DIR
-            git fetch origin main
-            git reset --hard origin/main
 
             # Install & build
             pnpm install --frozen-lockfile
