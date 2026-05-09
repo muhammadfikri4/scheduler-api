@@ -12,9 +12,9 @@ export class MailScheduler {
     private configService: ConfigService,
   ) {}
 
-  @Cron(process.env.CRON_SCHEDULE || '0 * * * * *')
-  async handleCron(): Promise<void> {
-    this.logger.log('Scheduler triggered - sending email...');
-    await this.mailService.sendMail();
-  }
+  // @Cron(process.env.CRON_SCHEDULE || '0 * * * * *')
+  // async handleCron(): Promise<void> {
+  //   this.logger.log('Scheduler triggered - sending email...');
+  //   await this.mailService.sendMail();
+  // }
 }
