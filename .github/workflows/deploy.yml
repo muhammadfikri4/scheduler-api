@@ -39,7 +39,7 @@ jobs:
             fi
 
             # Install & build
-            rm -rf dist
+            rm -rf dist tsconfig.tsbuildinfo
             pnpm install
             pnpm build
 
