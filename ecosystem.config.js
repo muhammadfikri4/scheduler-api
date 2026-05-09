@@ -1,7 +1,7 @@
 module.exports = {
   apps: [
     {
-      name: 'nestjs-scheduler-email',
+      name: 'scheduler-api',
       script: 'dist/main.js',
       instances: 1,
       autorestart: true,
