@@ -38,10 +38,10 @@ jobs:
               cd $APP_DIR
             fi
 
-            # Clean old build, install & rebuild
+            # Install & build
             rm -rf dist
-            NODE_ENV=development pnpm install
-            npx nest build
+            pnpm install
+            pnpm build
 
             # Copy env if exists
             if [ ! -f .env ]; then
