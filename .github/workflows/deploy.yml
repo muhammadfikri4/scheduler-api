@@ -1,0 +1,63 @@
+name: Deploy to VM
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy via SSH
+        env:
+          SERVER_DOMAIN: ${{ secrets.SERVER_DOMAIN }}
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          password: ${{ secrets.SERVER_PASSWORD }}
+          port: 22
+          envs: SERVER_DOMAIN
+          script: |
+            export NVM_DIR="$HOME/.nvm"
+            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+
+            APP_DIR="/var/www/nestjs-scheduler-email"
+
+            # Clone or pull latest
+            if [ ! -d "$APP_DIR" ]; then
+              git clone git@github.com:${{ github.repository }}.git $APP_DIR
+            fi
+
+            cd $APP_DIR
+            git fetch origin main
+            git reset --hard origin/main
+
+            # Install & build
+            pnpm install --frozen-lockfile
+            pnpm build
+
+            # Copy env if exists
+            if [ ! -f .env ]; then
+              echo "WARNING: .env file not found, please create it manually"
+            fi
+
+            # Generate nginx config from template
+            export SERVER_DOMAIN="${SERVER_DOMAIN}"
+            envsubst '${SERVER_DOMAIN}' < nginx.conf > /tmp/nestjs-scheduler-email.conf
+            sudo cp /tmp/nestjs-scheduler-email.conf /etc/nginx/sites-available/nestjs-scheduler-email
+            sudo ln -sf /etc/nginx/sites-available/nestjs-scheduler-email /etc/nginx/sites-enabled/
+            sudo nginx -t && sudo systemctl reload nginx
+
+            # Start or restart with PM2
+            if pm2 describe nestjs-scheduler-email > /dev/null 2>&1; then
+              pm2 restart nestjs-scheduler-email
+            else
+              pm2 start dist/main.js --name nestjs-scheduler-email
+            fi
+
+            pm2 save
