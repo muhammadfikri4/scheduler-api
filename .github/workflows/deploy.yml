@@ -38,9 +38,10 @@ jobs:
               cd $APP_DIR
             fi
 
-            # Install & build
-            pnpm install --frozen-lockfile
-            pnpm build
+            # Clean old build, install & rebuild
+            rm -rf dist
+            NODE_ENV=development pnpm install
+            npx nest build
 
             # Copy env if exists
             if [ ! -f .env ]; then
@@ -54,11 +55,7 @@ jobs:
             sudo ln -sf /etc/nginx/sites-available/nestjs-scheduler-email /etc/nginx/sites-enabled/
             sudo nginx -t && sudo systemctl reload nginx
 
-            # Start or restart with PM2
-            if pm2 describe scheduler-api > /dev/null 2>&1; then
-              pm2 restart scheduler-api
-            else
-              pm2 start dist/main.js --name scheduler-api
-            fi
-
+            # Stop, delete, and start fresh with PM2 to ensure correct script path
+            pm2 delete scheduler-api 2>/dev/null || true
+            pm2 start dist/main.js --name scheduler-api
             pm2 save
