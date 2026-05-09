@@ -9,6 +9,7 @@ export class HealthController {
       uptime: process.uptime(),
       memoryUsage: process.memoryUsage().rss,
       timestamp: new Date().toISOString(),
+      newField: "Updated From CI/CD"
     };
   }
 }
